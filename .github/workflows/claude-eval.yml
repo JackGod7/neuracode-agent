@@ -1,0 +1,44 @@
+name: Claude Eval
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # 1 AM Lima
+  workflow_dispatch:
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Correr evals
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          npx tsx tests/evals/run.ts > eval-results.json
+
+      - name: Upload resultados
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-${{ github.run_id }}
+          path: eval-results.json
+
+      - name: Comentar en commit si <80% pasaron
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PASS_RATE=$(jq -r '.pass_rate' eval-results.json)
+          if (( $(echo "$PASS_RATE < 0.8" | bc -l) )); then
+            gh api repos/${{ github.repository }}/commits/${{ github.sha }}/comments \
+              -f body="⚠️ Eval pass rate: ${PASS_RATE}. Revisa eval-results-${{ github.run_id }}"
+          fi

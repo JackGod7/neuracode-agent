@@ -1,0 +1,41 @@
+name: Ingest Knowledge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "knowledge/**.md"
+      - "scripts/ingest.ts"
+  workflow_dispatch:
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Ingest a Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: npm run ingest
+
+      - name: Notificar a Jack
+        if: success()
+        env:
+          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
+          PHONE_NUMBER_ID: ${{ secrets.PHONE_NUMBER_ID }}
+          JACK_WHATSAPP: ${{ secrets.JACK_WHATSAPP }}
+        run: |
+          curl -X POST "https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages" \
+            -H "Authorization: Bearer ${WHATSAPP_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"messaging_product\":\"whatsapp\",\"to\":\"${JACK_WHATSAPP}\",\"type\":\"text\",\"text\":{\"body\":\"✓ Knowledge re-ingestado. Commit: ${{ github.sha }}\"}}"
