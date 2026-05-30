@@ -1,0 +1,55 @@
+name: CI / Deploy
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    name: Typecheck + Build + Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: TypeScript check
+        run: npm run typecheck
+
+      - name: Build (tsc emit)
+        run: npm run build
+
+      - name: Tests
+        run: npm test
+
+      - name: Verificar que cada spec tenga acceptance.md
+        run: |
+          for spec_dir in specs/*/; do
+            if [ ! -f "${spec_dir}acceptance.md" ]; then
+              echo "Falta acceptance.md en ${spec_dir}"
+              exit 1
+            fi
+          done
+
+  deploy:
+    name: Deploy → Railway
+    needs: [ci]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy
+        run: railway up --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
