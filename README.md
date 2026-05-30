@@ -81,3 +81,4 @@ Ver `CLAUDE.md` sección "Arquitectura".
 - **Fase 1**: persistencia completa, perfil de lead, métricas
 - **Fase 2**: audios (Whisper), imágenes (Claude vision), Cal.com API
 - **Fase 3**: templates WhatsApp aprobados, follow-up automático, dashboard
+# neuracode-agent
