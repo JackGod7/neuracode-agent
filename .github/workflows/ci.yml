@@ -46,10 +46,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
       - name: Deploy
-        run: railway up --ci --service ${{ secrets.RAILWAY_SERVICE_NAME }}
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          curl -fsSL -X POST "${{ secrets.RAILWAY_DEPLOY_HOOK_URL }}"
