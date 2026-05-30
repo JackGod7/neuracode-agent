@@ -1,13 +1,14 @@
 /**
- * Registry central de tools. Cada tool exporta su schema + handler.
+ * Registry central de tools.
  *
- * El loop en claude.ts llama a executeTool(name, input, context).
- * Si una tool falla, devuelve { error: "..." } en vez de tirar excepción —
- * así Claude puede manejar el error en la siguiente iteración.
+ * executeTool aplica:
+ * - Capa 2 de idempotencia (spec 005): tool_call_cache por hash de input
+ * - Error handling: errores se devuelven como { error: "..." }, nunca se cachean
  */
 
 import Anthropic from "@anthropic-ai/sdk";
 import { logger } from "../logger";
+import { makeIdempotencyKey, getCachedToolResult, cacheToolResult } from "../db";
 
 import { consultarBootcamp, consultarBootcampSchema } from "./consultar_bootcamp";
 import { inscribirWebinar, inscribirWebinarSchema } from "./inscribir_webinar";
@@ -51,8 +52,22 @@ export async function executeTool(
     logger.warn({ tool: name }, "Tool desconocida");
     return { error: `Tool '${name}' no existe` };
   }
+
+  // Capa 2: tool cache (spec 005) — no cachear errores
+  const key = makeIdempotencyKey(ctx.leadId, name, input);
+  const cached = await getCachedToolResult(key).catch(() => null);
+  if (cached !== null) {
+    logger.info({ tool: name, key }, "tool cache hit");
+    return cached;
+  }
+
   try {
-    return await handler(input, ctx);
+    const result = await handler(input, ctx);
+    // Cache successful result only — errors must be retryable
+    await cacheToolResult(key, name, ctx.leadId, result).catch((err) => {
+      logger.warn({ err, tool: name }, "Error guardando en tool_call_cache");
+    });
+    return result;
   } catch (err) {
     logger.error({ err, tool: name }, "Error ejecutando tool");
     return { error: (err as Error).message };

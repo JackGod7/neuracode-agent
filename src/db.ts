@@ -1,24 +1,13 @@
-/**
- * Supabase client + queries core.
- *
- * TODO Claude Code:
- * - Generar tipos con `supabase gen types typescript`
- * - Manejar conflict en upsert de leads
- * - Soft delete vs hard delete de conversations
- */
-
+import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "./logger";
 
-const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
-
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  throw new Error("Faltan SUPABASE_URL o SUPABASE_SERVICE_KEY");
-}
-
-export const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-  auth: { persistSession: false },
-});
+// Env vars validated in index.ts before server starts.
+export const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_KEY!,
+  { auth: { persistSession: false } }
+);
 
 // ============================================
 // Lead
@@ -32,25 +21,31 @@ export type Lead = {
 };
 
 export async function getOrCreateLead(whatsappNumber: string): Promise<Lead> {
-  const { data: existing } = await supabase
-    .from("leads")
-    .select("id, whatsapp_number, name, email, status")
-    .eq("whatsapp_number", whatsappNumber)
-    .maybeSingle();
-
-  if (existing) return existing as Lead;
-
-  const { data: created, error } = await supabase
+  // Atomic: try INSERT first. On 23505 (unique_violation) the lead already exists — fetch it.
+  // This eliminates the SELECT+INSERT race condition where two concurrent webhooks both
+  // see null and both attempt INSERT, causing the second to throw.
+  const { data: inserted, error: insertError } = await supabase
     .from("leads")
     .insert({ whatsapp_number: whatsappNumber, status: "new" })
     .select("id, whatsapp_number, name, email, status")
     .single();
 
-  if (error || !created) {
-    logger.error({ err: error }, "Error creando lead");
-    throw error ?? new Error("Error creando lead");
+  if (!insertError && inserted) return inserted as Lead;
+
+  if (insertError?.code === "23505") {
+    const { data: existing, error: fetchError } = await supabase
+      .from("leads")
+      .select("id, whatsapp_number, name, email, status")
+      .eq("whatsapp_number", whatsappNumber)
+      .single();
+
+    if (!fetchError && existing) return existing as Lead;
+    logger.error({ err: fetchError }, "Error fetching lead after unique conflict");
+    throw fetchError ?? new Error("Lead not found after unique conflict");
   }
-  return created as Lead;
+
+  logger.error({ err: insertError }, "Error creando lead");
+  throw insertError ?? new Error("Error creando lead");
 }
 
 export async function updateLead(leadId: string, patch: Partial<Lead>): Promise<void> {
@@ -74,7 +69,6 @@ type SaveMessageInput = {
 };
 
 export async function saveMessage(input: SaveMessageInput): Promise<void> {
-  // TODO Claude Code: una conversación por lead. Por ahora, conversation_id = lead_id como hack.
   const { error } = await supabase.from("messages").insert({
     conversation_id: input.leadId,
     wamid: input.wamid,
@@ -83,7 +77,10 @@ export async function saveMessage(input: SaveMessageInput): Promise<void> {
     tool_calls: input.toolCalls ?? null,
     tool_results: input.toolResults ?? null,
   });
-  if (error) logger.error({ err: error }, "Error guardando mensaje");
+  if (error) {
+    logger.error({ err: error }, "Error guardando mensaje");
+    throw error; // caller handles: 23505 = wamid dedup (spec 005), else = real error
+  }
 }
 
 export async function loadRecentMessages(
@@ -104,4 +101,52 @@ export async function loadRecentMessages(
   }
 
   return (data ?? []).reverse() as Array<{ role: "user" | "assistant"; content: string }>;
+}
+
+// ============================================
+// Tool call cache — spec 005 Capa 2
+// ============================================
+const TOOL_CACHE_TTL_MS = 60_000;
+
+export function makeIdempotencyKey(
+  leadId: string,
+  toolName: string,
+  input: object
+): string {
+  // Sort keys before stringifying to ensure {a:1,b:2} and {b:2,a:1} produce the same hash.
+  const sortedInput = Object.fromEntries(
+    Object.entries(input).sort(([a], [b]) => a.localeCompare(b))
+  );
+  return crypto
+    .createHash("sha256")
+    .update(`${leadId}:${toolName}:${JSON.stringify(sortedInput)}`)
+    .digest("hex");
+}
+
+export async function getCachedToolResult(key: string): Promise<unknown | null> {
+  const ttlCutoff = new Date(Date.now() - TOOL_CACHE_TTL_MS).toISOString();
+  const { data } = await supabase
+    .from("tool_call_cache")
+    .select("result")
+    .eq("idempotency_key", key)
+    .gt("created_at", ttlCutoff)
+    .maybeSingle();
+  return data?.result ?? null;
+}
+
+export async function cacheToolResult(
+  key: string,
+  toolName: string,
+  leadId: string,
+  result: unknown
+): Promise<void> {
+  const { error } = await supabase
+    .from("tool_call_cache")
+    .upsert(
+      { idempotency_key: key, tool_name: toolName, lead_id: leadId, result },
+      { onConflict: "idempotency_key" }
+    );
+  if (error) {
+    logger.warn({ err: error, key, toolName }, "Error guardando en tool_call_cache");
+  }
 }

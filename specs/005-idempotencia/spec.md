@@ -1,5 +1,9 @@
 # Spec 005 — Idempotencia
 
+| Versión | Fecha | Autor | Estado | Notas |
+|---|---|---|---|---|
+| v1.0.0 | 2026-05-30 | Claude Code | **pendiente de implementar** | Spec correcto. No implementado — orden de CLAUDE.md violado. Bug #1 (crítico) del audit 2026-05-30 trazado aquí. Implementar ANTES de spec 003. |
+
 ## Objetivo
 
 Garantizar que cada operación con efecto externo (responder a WhatsApp, generar link de pago, inscribir webinar, escalar a Jack) se ejecuta **una sola vez** aunque reciba la misma entrada N veces.

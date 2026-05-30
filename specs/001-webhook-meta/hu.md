@@ -1,5 +1,10 @@
 # Historias de usuario — Feature 001
 
+| Versión | Fecha | Autor | Estado |
+|---|---|---|---|
+| v1.0.0 | 2026-05-30 | Claude Code | implemented |
+| v1.1.0 | 2026-05-30 | Claude Code | implemented — HU-001-03 escenario from/wamid vacío (audit 2026-05-30) |
+
 ## HU-001-01: Verificar webhook con Meta
 
 **Como** Meta Cloud API
@@ -85,6 +90,14 @@ Scenario: Mensaje tipo image
   When recibo POST /webhook con message.type = "image"
   Then respondo 200
     And se loggea "Tipo no soportado en Fase 0"
+
+Scenario: Payload con from o wamid vacíos
+  When recibo POST /webhook con firma válida
+    And message.from = "" o message.id = ""
+  Then respondo 200
+    And se loggea warn "Mensaje sin from o wamid, ignorado"
+    And NO se llama a handleIncomingMessage
+    And NO se crea lead en DB
 ```
 
 ---

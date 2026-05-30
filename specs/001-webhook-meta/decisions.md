@@ -1,5 +1,10 @@
 # Decisiones locales — Feature 001
 
+| Versión | Fecha | Autor | Estado |
+|---|---|---|---|
+| v1.0.0 | 2026-05-30 | Claude Code | implemented |
+| v1.1.0 | 2026-05-30 | Claude Code | implemented — D6 agregado (audit 2026-05-30) |
+
 ## D1: Fastify nativo, sin middleware externo para body parsing
 
 **Decisión**: usar `addContentTypeParser` con `parseAs: "buffer"` de Fastify para retener el raw body.
@@ -39,3 +44,11 @@
 **Razón**: el payload de Meta no tiene un schema oficial estable. Validar contra schema rígido nos haría fallar con cambios menores de Meta. Suficiente: type assertions en el handler.
 
 **Revisitar**: cuando el agente tenga >1000 mensajes/día, considerar `zod` para validación dura.
+
+## D6: Validar `from` y `wamid` no-vacíos antes de procesar
+
+**Decisión**: en `processWebhook`, después de extraer `from` y `wamid`, verificar que ambos sean strings no vacíos. Si alguno es vacío → log warn + return sin procesar.
+
+**Razón**: Meta puede entregar payloads donde `value.messages` existe pero el primer elemento es un status update con `from` o `id` ausentes/vacíos. Sin este guard, `handleIncomingMessage` se llamaría con `from=""`, creando un lead con número vacío y rompiendo la clave de dedup de wamid.
+
+**Trazabilidad**: bug #9 del code-review audit 2026-05-30. Implementado en `src/index.ts` función `processWebhook`.

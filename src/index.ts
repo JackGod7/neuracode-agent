@@ -15,20 +15,33 @@ import crypto from "crypto";
 import { logger } from "./logger";
 import { handleIncomingMessage } from "./claude";
 
-const {
-  PORT = "3000",
-  VERIFY_TOKEN,
-  APP_SECRET,
-} = process.env;
+// ============================================
+// Validación de env vars — fail-fast con mensaje claro
+// ============================================
+const REQUIRED_ENV_VARS = [
+  "VERIFY_TOKEN",
+  "APP_SECRET",
+  "WHATSAPP_TOKEN",
+  "PHONE_NUMBER_ID",
+  "SUPABASE_URL",
+  "SUPABASE_SERVICE_KEY",
+  "ANTHROPIC_API_KEY",
+  "OPENAI_API_KEY",
+  "MP_ACCESS_TOKEN",
+] as const;
 
-if (!VERIFY_TOKEN || !APP_SECRET) {
-  logger.fatal("Faltan VERIFY_TOKEN o APP_SECRET");
-  process.exit(1);
+for (const key of REQUIRED_ENV_VARS) {
+  if (!process.env[key]) {
+    logger.fatal(`Falta variable de entorno requerida: ${key}`);
+    process.exit(1);
+  }
 }
 
+const { PORT = "3000", VERIFY_TOKEN, APP_SECRET } = process.env;
+
 const app = Fastify({
-  logger: false,                            // usamos pino propio
-  bodyLimit: 1024 * 1024,                   // 1MB es más que suficiente para WhatsApp
+  logger: false,
+  bodyLimit: 1024 * 1024,
 });
 
 // Capturar raw body para validar firma de Meta
@@ -108,16 +121,21 @@ async function processWebhook(body: Record<string, unknown>): Promise<void> {
   const value = change?.value as Record<string, unknown> | undefined;
   const message = (value?.messages as Array<Record<string, unknown>>)?.[0];
 
-  if (!message) return;                     // status updates, no mensaje
+  if (!message) return; // status updates, no mensaje
 
   const from = message.from as string;
   const wamid = message.id as string;
   const type = message.type as string;
 
-  // Fase 0: solo texto. TODO Claude Code: agregar audio + imagen en Fase 2.
+  // Guard: Meta puede entregar status updates con from/wamid vacíos
+  if (!from || !wamid) {
+    logger.warn({ message }, "Mensaje sin from o wamid, ignorado");
+    return;
+  }
+
+  // Fase 0: solo texto. TODO: agregar audio + imagen en Fase 2.
   if (type !== "text") {
     logger.info({ from, type }, "Tipo no soportado en Fase 0");
-    // TODO: responder con mensaje educado de "todavía no proceso audios/imágenes"
     return;
   }
 

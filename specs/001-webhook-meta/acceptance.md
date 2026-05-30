@@ -1,5 +1,10 @@
 # Criterios de aceptación — Feature 001
 
+| Versión | Fecha | Autor | Estado |
+|---|---|---|---|
+| v1.0.0 | 2026-05-30 | Claude Code | implemented |
+| v1.1.0 | 2026-05-30 | Claude Code | implemented — test from/wamid vacío (audit 2026-05-30) |
+
 > Si estos checks pasan, la feature está hecha.
 
 ## Tests automatizados
@@ -17,6 +22,8 @@ describe("Feature 001: Webhook Meta", () => {
   test("POST /webhook con mensaje de texto loggea { from, wamid, text }");
   test("POST /webhook con audio loggea 'Tipo no soportado'");
   test("POST /webhook con status update no genera log de mensaje");
+  test("POST /webhook con from vacío → ignorado, log warn, no crea lead");
+  test("POST /webhook con wamid vacío → ignorado, log warn, no crea lead");
   test("GET /health devuelve 200 con { ok: true }");
 });
 ```

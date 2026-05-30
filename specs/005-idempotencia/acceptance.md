@@ -1,5 +1,9 @@
 # Acceptance — Feature 005: Idempotencia
 
+| Versión | Fecha | Autor | Estado |
+|---|---|---|---|
+| v1.0.0 | 2026-05-30 | Claude Code | draft |
+
 ## Tests
 
 ```typescript

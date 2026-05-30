@@ -1,5 +1,10 @@
 # CLAUDE.md — Feature 001: Webhook Meta
 
+| Versión | Fecha | Autor | Estado |
+|---|---|---|---|
+| v1.0.0 | 2026-05-30 | Claude Code | implemented |
+| v1.1.0 | 2026-05-30 | Claude Code | implemented — trampa from/wamid vacío agregada |
+
 ## Scope de archivos
 
 **Archivos que vas a modificar**:
@@ -29,6 +34,7 @@ Meta Cloud API hace 2 cosas con el webhook:
 - **El raw body se necesita para validar firma**. Fastify por defecto parsea JSON y pierde el raw. Usa el `addContentTypeParser` que ya está en `src/index.ts`.
 - **`timingSafeEqual` tira si los buffers tienen distinto largo**. Envolver en try/catch.
 - **Status updates también llegan al webhook** (delivered, read, sent). Filtrar antes de procesar.
+- **`from` y `wamid` pueden ser strings vacíos** en algunos payloads de Meta. Validar `if (!from || !wamid)` antes de llamar a `handleIncomingMessage` — sin este guard se crea un lead con número vacío y la clave de dedup queda rota.
 
 ## Lo que NO va a esta feature
 

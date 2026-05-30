@@ -1,5 +1,10 @@
 # Spec 001 — Webhook Meta
 
+| Versión | Fecha | Autor | Estado | Notas |
+|---|---|---|---|---|
+| v1.0.0 | 2026-05-30 | Claude Code | implemented | Spec original. |
+| v1.1.0 | 2026-05-30 | Claude Code | implemented | Agregado constraint `from`/`wamid` no-vacíos. Bug #9 del audit 2026-05-30. |
+
 ## Objetivo
 
 Recibir mensajes de WhatsApp Cloud API de forma segura y confiable. Esta es la puerta de entrada al sistema.
@@ -36,6 +41,7 @@ Es la **primera línea de defensa contra abuso**: cualquiera puede mandar POST a
 | Validación de firma con `timingSafeEqual` | Evitar timing attacks |
 | No usar `body-parser` ni `express.raw` | Fastify nativo es más rápido y tiene el parser custom |
 | El handler POST nunca debe tirar excepción al cliente | Meta marca el endpoint como inestable si recibe 5xx repetidos |
+| `from` y `wamid` deben ser strings no vacíos antes de procesar | Meta puede entregar status updates con estructura de mensaje pero sin `from`/`id` válidos; procesarlos causaría leads con número vacío y wamid inútil como clave de dedup |
 
 ## No-objetivos
 

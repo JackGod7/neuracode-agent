@@ -33,8 +33,7 @@ export async function agendarCall(
   const calLink = process.env.CAL_LINK ?? "https://cal.com/jack-aguilar";
 
   await updateLead(ctx.leadId, {
-    status: urgencia === "alta" ? "qualified" : "qualified",
-    // TODO Claude Code: meter motivo en metadata jsonb
+    status: urgencia === "alta" ? "hot" : "qualified",
   });
 
   return {

@@ -4,9 +4,12 @@ import { supabase } from "../db";
 import { logger } from "../logger";
 import type { ToolContext } from "./index";
 
-const mpClient = new MercadoPagoConfig({
-  accessToken: process.env.MP_ACCESS_TOKEN ?? "",
-});
+const mpAccessToken = process.env.MP_ACCESS_TOKEN;
+if (!mpAccessToken) {
+  throw new Error("Falta MP_ACCESS_TOKEN");
+}
+
+const mpClient = new MercadoPagoConfig({ accessToken: mpAccessToken });
 
 // Precios canónicos. Si cambian, actualizar también knowledge/bootcamp.md
 const PRECIOS: Record<string, { usd: number; descripcion: string }> = {
