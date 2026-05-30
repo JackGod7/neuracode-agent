@@ -1,4 +1,4 @@
-name: CI / Deploy
+name: CI
 
 on:
   push:
@@ -37,34 +37,3 @@ jobs:
               exit 1
             fi
           done
-
-  deploy:
-    name: Deploy → Railway
-    needs: [ci]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - name: Verify secret exists
-        run: |
-          if [ -z "$RAILWAY_DEPLOY_HOOK_URL" ]; then
-            echo "::error::RAILWAY_DEPLOY_HOOK_URL secret not set. Add it in GitHub → Settings → Secrets → Actions."
-            exit 1
-          fi
-        env:
-          RAILWAY_DEPLOY_HOOK_URL: ${{ secrets.RAILWAY_DEPLOY_HOOK_URL }}
-
-      - name: Trigger Railway deploy hook
-        run: |
-          HTTP_STATUS=$(curl -s -o /tmp/railway_resp.txt -w "%{http_code}" \
-            -X POST \
-            --max-time 15 \
-            "$RAILWAY_DEPLOY_HOOK_URL")
-          echo "HTTP status: $HTTP_STATUS"
-          echo "Response: $(cat /tmp/railway_resp.txt)"
-          if [ "$HTTP_STATUS" != "200" ]; then
-            echo "::error::Railway deploy hook returned HTTP $HTTP_STATUS — check RAILWAY_DEPLOY_HOOK_URL is valid and service exists"
-            exit 1
-          fi
-          echo "Deploy triggered. Monitor: https://railway.app/dashboard"
-        env:
-          RAILWAY_DEPLOY_HOOK_URL: ${{ secrets.RAILWAY_DEPLOY_HOOK_URL }}
