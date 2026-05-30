@@ -14,8 +14,8 @@ mkdir -p "$LOG_DIR"
 
 # Leer payload de stdin
 PAYLOAD=$(cat)
-COMMAND=$(echo "$PAYLOAD" | jq -r '.tool_input.command // empty')
-TOOL=$(echo "$PAYLOAD" | jq -r '.tool_name // empty')
+COMMAND=$(echo "$PAYLOAD" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>process.stdout.write(JSON.parse(d)?.tool_input?.command||''))" 2>/dev/null || true)
+TOOL=$(echo "$PAYLOAD" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>process.stdout.write(JSON.parse(d)?.tool_name||''))" 2>/dev/null || true)
 
 # Log para auditoría
 echo "$(date -Iseconds) [PRE] $TOOL: $COMMAND" >> "$LOG_DIR/tool-calls.log"

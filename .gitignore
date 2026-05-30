@@ -9,3 +9,11 @@ dist/
 .idea/
 coverage/
 .tsbuildinfo
+
+# graphify — ignorar binarios y temporales, commitear reporte y JSON
+graphify-out/graph.html
+graphify-out/graph.svg
+graphify-out/graph.graphml
+graphify-out/obsidian/
+graphify-out/.graphify_chunk_*.json
+graphify-out/cost.json

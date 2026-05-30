@@ -45,16 +45,16 @@ create index if not exists idx_conversations_number on conversations(whatsapp_nu
 
 -- ============================================
 -- messages: log completo de mensajes (entrada y salida)
+-- Fase 0: conversation_id = lead_id (1:1). Ver spec 000.
 -- ============================================
 create table if not exists messages (
   id uuid primary key default gen_random_uuid(),
-  conversation_id uuid references conversations(id) on delete cascade,
-  wamid text unique,                        -- ID de WhatsApp para idempotencia
-  role text not null,                       -- 'user', 'assistant', 'tool'
-  content text,
+  conversation_id uuid not null references leads(id) on delete cascade,
+  wamid text unique,                        -- ID de WhatsApp para idempotencia (spec 005 Capa 1)
+  role text not null check (role in ('user', 'assistant', 'tool')),
+  content text not null,
   tool_calls jsonb,                         -- si role = 'assistant' y usó tools
   tool_results jsonb,                       -- si role = 'tool'
-  metadata jsonb default '{}'::jsonb,
   created_at timestamptz default now()
 );
 
@@ -132,6 +132,29 @@ create table if not exists payment_links (
   status text default 'pending',            -- 'pending', 'paid', 'expired', 'cancelled'
   paid_at timestamptz,
   created_at timestamptz default now()
+);
+
+-- ============================================
+-- tool_call_cache: idempotencia de tool calls (spec 005 Capa 2)
+-- TTL 60s — purgar con job: DELETE WHERE created_at < NOW() - INTERVAL '24 hours'
+-- ============================================
+create table if not exists tool_call_cache (
+  idempotency_key text primary key,
+  lead_id uuid references leads(id) on delete cascade,
+  tool_name text not null,
+  result jsonb,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_tool_cache_created on tool_call_cache(created_at);
+
+-- ============================================
+-- mp_webhook_log: idempotencia webhooks Mercado Pago (spec 005 Capa 3)
+-- ============================================
+create table if not exists mp_webhook_log (
+  idempotency_key text primary key,
+  payload jsonb,
+  processed_at timestamptz default now()
 );
 
 -- ============================================

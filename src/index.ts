@@ -14,6 +14,7 @@ import Fastify, { FastifyRequest, FastifyReply } from "fastify";
 import crypto from "crypto";
 import { logger } from "./logger";
 import { handleIncomingMessage } from "./claude";
+import { sendWhatsAppMessage } from "./whatsapp";
 
 // ============================================
 // Validación de env vars — fail-fast con mensaje claro
@@ -116,32 +117,44 @@ function verifySignature(rawBody: Buffer, signature: string): boolean {
 }
 
 async function processWebhook(body: Record<string, unknown>): Promise<void> {
-  const entry = (body.entry as Array<Record<string, unknown>>)?.[0];
-  const change = (entry?.changes as Array<Record<string, unknown>>)?.[0];
-  const value = change?.value as Record<string, unknown> | undefined;
-  const message = (value?.messages as Array<Record<string, unknown>>)?.[0];
+  const entries = (body.entry as Array<Record<string, unknown>>) ?? [];
 
-  if (!message) return; // status updates, no mensaje
+  for (const entry of entries) {
+    const changes = (entry.changes as Array<Record<string, unknown>>) ?? [];
+    for (const change of changes) {
+      const value = change.value as Record<string, unknown> | undefined;
+      const messages = (value?.messages as Array<Record<string, unknown>>) ?? [];
 
+      for (const message of messages) {
+        await processMessage(message);
+      }
+    }
+  }
+}
+
+async function processMessage(message: Record<string, unknown>): Promise<void> {
   const from = message.from as string;
   const wamid = message.id as string;
   const type = message.type as string;
 
-  // Guard: Meta puede entregar status updates con from/wamid vacíos
   if (!from || !wamid) {
     logger.warn({ message }, "Mensaje sin from o wamid, ignorado");
     return;
   }
 
-  // Fase 0: solo texto. TODO: agregar audio + imagen en Fase 2.
+  logger.info({ from, wamid, type }, "Mensaje entrante");
+
   if (type !== "text") {
     logger.info({ from, type }, "Tipo no soportado en Fase 0");
+    // Responder al usuario en lugar de ignorar silenciosamente
+    await sendWhatsAppMessage(
+      from,
+      "Por ahora solo proceso mensajes de texto. ¿Puedes escribirme lo que necesitas?"
+    ).catch((err) => logger.error({ err, from }, "Error enviando respuesta a tipo no soportado"));
     return;
   }
 
   const text = (message.text as Record<string, string>).body;
-  logger.info({ from, wamid, text }, "Mensaje entrante");
-
   await handleIncomingMessage({ from, wamid, text });
 }
 
