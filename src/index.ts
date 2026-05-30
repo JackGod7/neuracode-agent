@@ -17,26 +17,61 @@ import { handleIncomingMessage } from "./claude";
 import { sendWhatsAppMessage } from "./whatsapp";
 
 // ============================================
-// Validación de env vars — fail-fast con mensaje claro
+// Validación de env vars — spec 009-env-diagnostics
 // ============================================
-const REQUIRED_ENV_VARS = [
-  "VERIFY_TOKEN",
-  "APP_SECRET",
-  "WHATSAPP_TOKEN",
-  "PHONE_NUMBER_ID",
-  "SUPABASE_URL",
-  "SUPABASE_SERVICE_KEY",
-  "ANTHROPIC_API_KEY",
-  "OPENAI_API_KEY",
-  "MP_ACCESS_TOKEN",
+const ENV_REGISTRY = [
+  {
+    name: "VERIFY_TOKEN",
+    hint: "Invéntalo tú: string aleatorio ≥16 chars. No tiene URL de origen.",
+  },
+  {
+    name: "APP_SECRET",
+    hint: "Meta for Developers → tu app → Configuración básica → App secret → Mostrar. https://developers.facebook.com",
+  },
+  {
+    name: "WHATSAPP_TOKEN",
+    hint: "Meta for Developers → tu app → WhatsApp → API Setup → Token de acceso temporal/permanente. https://developers.facebook.com",
+  },
+  {
+    name: "PHONE_NUMBER_ID",
+    hint: "Meta for Developers → tu app → WhatsApp → API Setup → Phone number ID. https://developers.facebook.com",
+  },
+  {
+    name: "SUPABASE_URL",
+    hint: "Supabase dashboard → Settings → API → Project URL (formato: https://<ref>.supabase.co). https://supabase.com/dashboard",
+  },
+  {
+    name: "SUPABASE_SERVICE_KEY",
+    hint: "Supabase dashboard → Settings → API → service_role key (NO la anon key). https://supabase.com/dashboard",
+  },
+  {
+    name: "ANTHROPIC_API_KEY",
+    hint: "Anthropic Console → API Keys → Create Key. https://console.anthropic.com",
+  },
+  {
+    name: "OPENAI_API_KEY",
+    hint: "OpenAI Platform → API keys → Create new secret key. https://platform.openai.com/api-keys",
+  },
+  // MP_ACCESS_TOKEN: requerido en spec 006-pagos, no en Fase 0
 ] as const;
 
-for (const key of REQUIRED_ENV_VARS) {
-  if (!process.env[key]) {
-    logger.fatal(`Falta variable de entorno requerida: ${key}`);
-    process.exit(1);
-  }
+type EnvVarName = typeof ENV_REGISTRY[number]["name"];
+const REQUIRED_ENV_VARS: readonly EnvVarName[] = ENV_REGISTRY.map((e) => e.name);
+
+logger.info({
+  node: process.version,
+  env: process.env.NODE_ENV ?? "production",
+}, "neuracode-agent arrancando");
+
+const missingDiag = ENV_REGISTRY
+  .filter((e) => !process.env[e.name])
+  .map((e) => ({ name: e.name, set: false, hint: e.hint }));
+
+if (missingDiag.length > 0) {
+  logger.fatal({ missing: missingDiag }, "Faltan variables de entorno — corrige en Railway dashboard y redespliega");
+  process.exit(1);
 }
+logger.info({ vars: REQUIRED_ENV_VARS.join(",") }, "Env vars OK");
 
 const { PORT = "3000", VERIFY_TOKEN, APP_SECRET } = process.env;
 
@@ -163,7 +198,7 @@ async function processMessage(message: Record<string, unknown>): Promise<void> {
 // ============================================
 app
   .listen({ port: Number(PORT), host: "0.0.0.0" })
-  .then(() => logger.info(`Escuchando en :${PORT}`))
+  .then(() => logger.info({ port: PORT, healthcheck: `http://0.0.0.0:${PORT}/health` }, "Servidor listo"))
   .catch((err) => {
     logger.fatal({ err }, "No se pudo arrancar el servidor");
     process.exit(1);
