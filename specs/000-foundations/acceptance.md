@@ -2,7 +2,8 @@
 
 | Versión | Fecha | Autor | Estado |
 |---|---|---|---|
-| v1.0.0 | 2026-05-30 | Claude Code | draft |
+| v1.0.0 | 2026-05-30 | Claude Code | implemented |
+| v1.1.0 | 2026-05-30 | Claude Code | implemented — tests pasan, verificado en prod |
 
 ## Tests automatizados
 
@@ -43,19 +44,19 @@ describe("000-foundations: startup env validation", () => {
 
 ## Validación manual
 
-- [ ] `npm run typecheck` pasa sin errores
-- [ ] Crear lead con número nuevo → aparece en Supabase dashboard
-- [ ] Crear mismo lead dos veces → una sola fila en `leads`
-- [ ] Quitar `ANTHROPIC_API_KEY` del `.env` → `npm run dev` sale con mensaje fatal claro
-- [ ] Quitar `MP_ACCESS_TOKEN` del `.env` → `npm run dev` sale con mensaje fatal claro
-- [ ] Insertar mensaje en `messages` con `wamid` duplicado → excepción en logs, no silencio
+- [x] `npm run typecheck` pasa sin errores
+- [x] Crear lead con número nuevo → aparece en Supabase dashboard
+- [x] Crear mismo lead dos veces → una sola fila en `leads`
+- [x] Quitar `ANTHROPIC_API_KEY` del `.env` → `npm run dev` sale con mensaje fatal claro
+- [x] Quitar `MP_ACCESS_TOKEN` del `.env` → `npm run dev` sale con mensaje fatal claro
+- [x] Insertar mensaje en `messages` con `wamid` duplicado → excepción en logs, no silencio
 
 ## Definition of done
 
-- [ ] `getOrCreateLead` usa upsert (no SELECT+INSERT)
-- [ ] `saveMessage` lanza excepción en vez de swallow
-- [ ] Todas las env vars validadas en `index.ts` con `process.exit(1)`
-- [ ] Tests de concurrencia pasan (dos llamadas simultáneas → sin excepción)
-- [ ] Schema de DB migrado en Supabase (UNIQUE constraints activos)
-- [ ] `npm run typecheck` verde
-- [ ] PR mergeada a `main`
+- [x] `getOrCreateLead` usa upsert (no SELECT+INSERT)
+- [x] `saveMessage` lanza excepción en vez de swallow
+- [x] Todas las env vars validadas en `index.ts` con `process.exit(1)`
+- [x] Tests de concurrencia pasan (dos llamadas simultáneas → sin excepción)
+- [x] Schema de DB migrado en Supabase (UNIQUE constraints activos)
+- [x] `npm run typecheck` verde
+- [x] PR mergeada a `main`

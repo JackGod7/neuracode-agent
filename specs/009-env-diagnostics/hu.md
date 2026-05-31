@@ -1,5 +1,9 @@
 # Historias de usuario — 009: env-diagnostics
 
+| Versión | Fecha | Autor | Estado |
+|---|---|---|---|
+| v1.0.0 | 2026-05-30 | Claude Code | implemented |
+
 ## HU-009-01: Diagnóstico accionable al arrancar con vars faltantes
 
 **Given** el servicio arranca en Railway con una o más vars requeridas sin valor

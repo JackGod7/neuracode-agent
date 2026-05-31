@@ -1,5 +1,9 @@
 # Spec 009: env-diagnostics
 
+| Versión | Fecha | Autor | Estado |
+|---|---|---|---|
+| v1.0.0 | 2026-05-30 | Claude Code | implemented |
+
 ## Qué se construye
 
 Al arrancar, si falta alguna variable de entorno requerida, el app imprime un diagnóstico

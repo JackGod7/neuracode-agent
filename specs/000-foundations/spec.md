@@ -2,7 +2,8 @@
 
 | Versión | Fecha | Autor | Estado | Notas |
 |---|---|---|---|---|
-| v1.0.0 | 2026-05-30 | Claude Code | draft | Spec inicial — generado desde audit de code-review. Bugs #2 y #3 del audit trazados aquí. |
+| v1.0.0 | 2026-05-30 | Claude Code | implemented | Spec inicial — generado desde audit de code-review. Bugs #2 y #3 del audit trazados aquí. |
+| v1.1.0 | 2026-05-30 | Claude Code | implemented | Verificado en prod — tests 37/37 pasan. |
 
 ## Objetivo
 

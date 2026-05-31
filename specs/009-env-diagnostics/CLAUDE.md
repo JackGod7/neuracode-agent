@@ -1,5 +1,9 @@
 # CLAUDE.md — Feature 009: env-diagnostics
 
+| Versión | Fecha | Autor | Estado |
+|---|---|---|---|
+| v1.0.0 | 2026-05-30 | Claude Code | implemented |
+
 ## Scope de archivos
 
 **Archivos que vas a modificar**:
