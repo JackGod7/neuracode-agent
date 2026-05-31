@@ -1,0 +1,1 @@
+{"nodes": [{"id": "system_prompt_SYSTEM_PROMPT", "label": "SYSTEM_PROMPT constant", "file_type": "code", "source_file": "src/system_prompt.ts", "source_location": "src/system_prompt.ts:12", "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}
