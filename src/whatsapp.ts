@@ -13,7 +13,7 @@ import { logger } from "./logger";
 const {
   WHATSAPP_TOKEN,
   PHONE_NUMBER_ID,
-  GRAPH_API_VERSION = "v21.0",
+  GRAPH_API_VERSION = "v22.0",
 } = process.env;
 
 if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) {
