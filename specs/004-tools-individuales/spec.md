@@ -2,7 +2,7 @@
 
 | Versión | Fecha | Autor | Estado | Notas |
 |---|---|---|---|---|
-| v1.0.0 | 2026-05-30 | Claude Code | draft | Spec inicial desde código existente. Bug #7 (agendar_call dead ternary) trazado aquí. |
+| v1.0.0 | 2026-05-30 | Claude Code | implemented | Spec inicial desde código existente. Bug #7 (agendar_call dead ternary) trazado aquí. |
 
 ## Objetivo
 

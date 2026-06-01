@@ -2,7 +2,7 @@
 
 | Versión | Fecha | Autor | Estado | Notas |
 |---|---|---|---|---|
-| v1.0.0 | 2026-05-30 | Claude Code | **pendiente de implementar** | Spec correcto. No implementado — orden de CLAUDE.md violado. Bug #1 (crítico) del audit 2026-05-30 trazado aquí. Implementar ANTES de spec 003. |
+| v1.0.0 | 2026-05-30 | Claude Code | **implemented** | Capa 1 (wamid 23505), Capa 2 (tool_call_cache), Capa 3 (mp_webhook_log schema) — presentes en src/ y supabase/schema.sql. |
 
 ## Objetivo
 

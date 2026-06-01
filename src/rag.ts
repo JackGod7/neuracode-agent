@@ -28,13 +28,20 @@ export async function searchKnowledge(
 ): Promise<KnowledgeMatch[]> {
   const { matchCount = 4, source } = options;
 
-  const embeddingResponse = await openai.embeddings.create({
-    model: EMBEDDING_MODEL,
-    input: query,
-  });
-  const queryEmbedding = embeddingResponse.data[0]?.embedding;
+  let queryEmbedding: number[] | undefined;
+  try {
+    const embeddingResponse = await openai.embeddings.create({
+      model: EMBEDDING_MODEL,
+      input: query,
+    });
+    queryEmbedding = embeddingResponse.data[0]?.embedding;
+  } catch (err) {
+    logger.error({ err }, "Error generando embedding para query");
+    return [];
+  }
+
   if (!queryEmbedding) {
-    logger.error("Error generando embedding para query");
+    logger.error("OpenAI retornó embedding vacío");
     return [];
   }
 

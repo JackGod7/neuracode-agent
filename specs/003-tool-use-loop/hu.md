@@ -2,7 +2,7 @@
 
 | Versión | Fecha | Autor | Estado |
 |---|---|---|---|
-| v1.0.0 | 2026-05-30 | Claude Code | draft |
+| v1.0.0 | 2026-05-30 | Claude Code | implemented |
 
 ## HU-003-01: Respuesta simple sin tools
 

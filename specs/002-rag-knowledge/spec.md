@@ -2,7 +2,7 @@
 
 | Versión | Fecha | Autor | Estado | Notas |
 |---|---|---|---|---|
-| v1.0.0 | 2026-05-30 | Claude Code | draft | Spec inicial desde código existente. |
+| v1.0.0 | 2026-05-30 | Claude Code | implemented | Spec inicial desde código existente. |
 
 ## Objetivo
 
