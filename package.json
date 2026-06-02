@@ -7,13 +7,14 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/src/index.js",
-    "ingest": "tsx scripts/ingest.ts",
+    "ingest": "tsx --env-file=.env scripts/ingest.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.46.0",
     "axios": "^1.7.7",
     "fastify": "^5.1.0",

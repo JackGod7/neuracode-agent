@@ -1,5 +1,5 @@
 /**
- * Script de ingesta. Lee knowledge/*.md, chunkea, embebe con OpenAI,
+ * Script de ingesta. Lee knowledge/*.md, chunkea, embebe con el provider configurado,
  * y carga a la tabla knowledge en Supabase.
  *
  * Uso: npm run ingest
@@ -10,25 +10,23 @@
  * - Validación de longitud máxima por chunk
  */
 
+import { createClient } from "@supabase/supabase-js";
 import fs from "fs/promises";
 import path from "path";
-import OpenAI from "openai";
-import { createClient } from "@supabase/supabase-js";
+import { buildEmbeddingChain } from "../src/embeddings";
 
-const { SUPABASE_URL, SUPABASE_SERVICE_KEY, OPENAI_API_KEY } = process.env;
+const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !OPENAI_API_KEY) {
-  console.error("Faltan variables de entorno");
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+  console.error("Faltan variables de entorno: SUPABASE_URL, SUPABASE_SERVICE_KEY");
   process.exit(1);
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
   auth: { persistSession: false },
 });
-const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-const EMBEDDING_MODEL = "text-embedding-3-small";
-const CHUNK_SIZE = 500;                     // caracteres
+const CHUNK_SIZE = 500;
 const CHUNK_OVERLAP = 50;
 const KNOWLEDGE_DIR = path.join(__dirname, "..", "knowledge");
 
@@ -43,12 +41,14 @@ function chunkText(text: string, size: number, overlap: number): string[] {
 }
 
 async function ingest(): Promise<void> {
+  const chain = buildEmbeddingChain();
+  console.log(`Provider chain: ${chain.name} (dims: ${chain.dimensions})`);
+
   const files = await fs.readdir(KNOWLEDGE_DIR);
   const mdFiles = files.filter((f) => f.endsWith(".md"));
 
   console.log(`Encontrados ${mdFiles.length} archivos en knowledge/`);
 
-  // Limpiar tabla (TODO Claude Code: ingesta diferencial)
   console.log("Limpiando knowledge existente...");
   await supabase.from("knowledge").delete().neq("id", "00000000-0000-0000-0000-000000000000");
 
@@ -68,17 +68,28 @@ async function ingest(): Promise<void> {
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       if (!chunk) continue;
-      const embedding = await openai.embeddings.create({
-        model: EMBEDDING_MODEL,
-        input: chunk,
-      });
 
-      await supabase.from("knowledge").insert({
+      const result = await chain.embedWithMeta(chunk);
+      if (!result) {
+        console.error(`\n✗ Chunk ${i + 1} de ${file}: todos los providers fallaron. Abortando.`);
+        process.exit(1);
+      }
+
+      const { embedding, provider } = result;
+      const embeddingColumn = provider.dimensions === 768 ? "embedding_768" : "embedding_1536";
+
+      const { error: insertError } = await supabase.from("knowledge").insert({
         source,
         title: `${source} #${i + 1}`,
         content: chunk,
-        embedding: embedding.data[0]?.embedding,
+        [embeddingColumn]: embedding,
+        provider_used: provider.name,
       });
+
+      if (insertError) {
+        console.error(`\n✗ Insert chunk ${i + 1} de ${file}:`, insertError.message, insertError.details);
+        process.exit(1);
+      }
 
       process.stdout.write(".");
     }
