@@ -19,7 +19,11 @@ export type KnowledgeMatch = {
   similarity: number;
 };
 
-const embeddingChain = buildEmbeddingChain();
+let _chain: ReturnType<typeof buildEmbeddingChain> | null = null;
+function getChain() {
+  if (!_chain) _chain = buildEmbeddingChain();
+  return _chain;
+}
 
 export async function searchKnowledge(
   query: string,
@@ -27,7 +31,8 @@ export async function searchKnowledge(
 ): Promise<KnowledgeMatch[]> {
   const { matchCount = 4, source } = options;
 
-  const result = await embeddingChain.embedWithMeta(query);
+  const chain = getChain();
+  const result = await chain.embedWithMeta(query);
   if (!result) {
     logger.error("Todos los providers de embedding fallaron para la query");
     return [];
@@ -35,7 +40,7 @@ export async function searchKnowledge(
 
   const { embedding: queryEmbedding, provider } = result;
 
-  const activeProvider = embeddingChain.primaryProvider.name;
+  const activeProvider = chain.primaryProvider.name;
   if (provider.name !== activeProvider) {
     logger.warn(
       `provider activo (${activeProvider}) distinto al que generó el embedding (${provider.name})`

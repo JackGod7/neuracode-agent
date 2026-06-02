@@ -45,7 +45,7 @@ function makeInsertChain(error: unknown = null) {
   return chain;
 }
 
-const LEAD_CTX = { leadId: "lead-uuid-123", from: "+51987654321" };
+const LEAD_CTX = { leadId: "lead-uuid-123", from: "+51987654321", whatsappNumber: "+51987654321" };
 
 // ---- consultar_bootcamp ----
 
@@ -53,7 +53,7 @@ describe("consultar_bootcamp", () => {
   beforeEach(() => vi.clearAllMocks());
 
   test("retorna context con matches cuando knowledge tiene datos", async () => {
-    const { consultarBootcamp } = await import("../src/tools/consultar_bootcamp");
+    const { consultarBootcamp } = await import("../src/tools/consultar_bootcamp.js");
     const matches = [{ id: "1", source: "bootcamp", title: "bootcamp #1", content: "USD 1497", similarity: 0.9 }];
     mockSearchKnowledge.mockResolvedValue(matches);
     mockFormatMatchesAsContext.mockReturnValue("[Fuente 1: bootcamp — bootcamp #1]\nUSD 1497");
@@ -65,7 +65,7 @@ describe("consultar_bootcamp", () => {
   });
 
   test("retorna context vacío cuando no hay matches", async () => {
-    const { consultarBootcamp } = await import("../src/tools/consultar_bootcamp");
+    const { consultarBootcamp } = await import("../src/tools/consultar_bootcamp.js");
     mockSearchKnowledge.mockResolvedValue([]);
     mockFormatMatchesAsContext.mockReturnValue("(sin información en la base de conocimiento)");
 
@@ -82,7 +82,7 @@ describe("inscribir_webinar", () => {
   beforeEach(() => vi.clearAllMocks());
 
   test("email inválido → { ok: false } sin tocar DB", async () => {
-    const { inscribirWebinar } = await import("../src/tools/inscribir_webinar");
+    const { inscribirWebinar } = await import("../src/tools/inscribir_webinar.js");
 
     const result = await inscribirWebinar(
       { nombre: "Ana", email: "noesunEmail", webinar: "W1" },
@@ -95,8 +95,8 @@ describe("inscribir_webinar", () => {
   });
 
   test("email válido → upsert en webinar_signups y actualiza lead", async () => {
-    const { inscribirWebinar } = await import("../src/tools/inscribir_webinar");
-    const chain = makeInsertChain(null);
+    const { inscribirWebinar } = await import("../src/tools/inscribir_webinar.js");
+    makeInsertChain(null);
     mockUpdateLead.mockResolvedValue(undefined);
 
     const result = await inscribirWebinar(
@@ -112,7 +112,7 @@ describe("inscribir_webinar", () => {
   });
 
   test("inscripción duplicada (upsert) → retorna ok:true sin duplicar", async () => {
-    const { inscribirWebinar } = await import("../src/tools/inscribir_webinar");
+    const { inscribirWebinar } = await import("../src/tools/inscribir_webinar.js");
     makeInsertChain(null);
     mockUpdateLead.mockResolvedValue(undefined);
 
@@ -134,7 +134,7 @@ describe("agendar_call", () => {
   });
 
   test("urgencia='alta' → lead status='hot'", async () => {
-    const { agendarCall } = await import("../src/tools/agendar_call");
+    const { agendarCall } = await import("../src/tools/agendar_call.js");
 
     await agendarCall({ motivo: "quiere comprar VIP", urgencia: "alta" }, LEAD_CTX);
 
@@ -145,7 +145,7 @@ describe("agendar_call", () => {
   });
 
   test("urgencia='media' → lead status='qualified'", async () => {
-    const { agendarCall } = await import("../src/tools/agendar_call");
+    const { agendarCall } = await import("../src/tools/agendar_call.js");
 
     await agendarCall({ motivo: "duda técnica", urgencia: "media" }, LEAD_CTX);
 
@@ -156,7 +156,7 @@ describe("agendar_call", () => {
   });
 
   test("urgencia='baja' → lead status='qualified'", async () => {
-    const { agendarCall } = await import("../src/tools/agendar_call");
+    const { agendarCall } = await import("../src/tools/agendar_call.js");
 
     await agendarCall({ motivo: "explorar opciones", urgencia: "baja" }, LEAD_CTX);
 
@@ -168,7 +168,7 @@ describe("agendar_call", () => {
 
   test("CAL_LINK no configurado → usa default cal.com/jack-aguilar", async () => {
     delete process.env.CAL_LINK;
-    const { agendarCall } = await import("../src/tools/agendar_call");
+    const { agendarCall } = await import("../src/tools/agendar_call.js");
 
     const result = await agendarCall({ motivo: "consulta", urgencia: "baja" }, LEAD_CTX);
 
@@ -184,7 +184,7 @@ describe("escalar_a_jack", () => {
   test("JACK_WHATSAPP ausente → no llama sendWhatsAppMessage, retorna ok:true", async () => {
     delete process.env.JACK_WHATSAPP;
     mockUpdateLead.mockResolvedValue(undefined);
-    const { escalarAJack } = await import("../src/tools/escalar_a_jack");
+    const { escalarAJack } = await import("../src/tools/escalar_a_jack.js");
 
     const result = await escalarAJack(
       { razon: "lead agresivo", contexto: "...", prioridad: "urgente" },
@@ -199,7 +199,7 @@ describe("escalar_a_jack", () => {
     process.env.JACK_WHATSAPP = "+51900000000";
     mockUpdateLead.mockResolvedValue(undefined);
     mockSendWhatsAppMessage.mockResolvedValue(undefined);
-    const { escalarAJack } = await import("../src/tools/escalar_a_jack");
+    const { escalarAJack } = await import("../src/tools/escalar_a_jack.js");
 
     const result = await escalarAJack(
       { razon: "lead agresivo", contexto: "amenaza", prioridad: "urgente" },
@@ -215,7 +215,7 @@ describe("escalar_a_jack", () => {
 
   test("updateLead falla → excepción sube sin swallow", async () => {
     mockUpdateLead.mockRejectedValue(new Error("DB timeout"));
-    const { escalarAJack } = await import("../src/tools/escalar_a_jack");
+    const { escalarAJack } = await import("../src/tools/escalar_a_jack.js");
 
     await expect(
       escalarAJack({ razon: "error", contexto: "", prioridad: "normal" }, LEAD_CTX)
@@ -235,7 +235,7 @@ describe("generar_link_pago", () => {
   });
 
   test("producto='enterprise' → { ok: false } sin llamar a MP", async () => {
-    const { generarLinkPago } = await import("../src/tools/generar_link_pago");
+    const { generarLinkPago } = await import("../src/tools/generar_link_pago.js");
 
     const result = await generarLinkPago(
       { producto: "enterprise", nombre: "Carlos" },
@@ -248,7 +248,7 @@ describe("generar_link_pago", () => {
   });
 
   test("producto='cohort' → crea preference MP con unit_price=597", async () => {
-    const { generarLinkPago } = await import("../src/tools/generar_link_pago");
+    const { generarLinkPago } = await import("../src/tools/generar_link_pago.js");
     mockMpPreferencesCreate.mockResolvedValue({ init_point: "https://mpago.la/abc" });
     makeInsertChain(null);
 
@@ -271,7 +271,7 @@ describe("generar_link_pago", () => {
   });
 
   test("producto='vip' → crea preference MP con unit_price=1497", async () => {
-    const { generarLinkPago } = await import("../src/tools/generar_link_pago");
+    const { generarLinkPago } = await import("../src/tools/generar_link_pago.js");
     mockMpPreferencesCreate.mockResolvedValue({ init_point: "https://mpago.la/xyz" });
     makeInsertChain(null);
 
@@ -293,7 +293,7 @@ describe("generar_link_pago", () => {
   });
 
   test("MP retorna error → { ok: false, message incluye escalar_a_jack }", async () => {
-    const { generarLinkPago } = await import("../src/tools/generar_link_pago");
+    const { generarLinkPago } = await import("../src/tools/generar_link_pago.js");
     mockMpPreferencesCreate.mockRejectedValue(new Error("401 Unauthorized"));
 
     const result = await generarLinkPago(

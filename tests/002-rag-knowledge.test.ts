@@ -2,12 +2,16 @@ import { describe, test, expect, vi, beforeEach } from "vitest";
 
 // ---- Mocks ----
 
-const mockEmbeddingsCreate = vi.hoisted(() => vi.fn());
+const mockEmbedWithMeta = vi.hoisted(() => vi.fn());
 const mockSupabaseRpc = vi.hoisted(() => vi.fn());
 
-vi.mock("openai", () => ({
-  default: vi.fn().mockImplementation(() => ({
-    embeddings: { create: mockEmbeddingsCreate },
+vi.mock("../src/embeddings/index", () => ({
+  buildEmbeddingChain: vi.fn(() => ({
+    name: "openai",
+    dimensions: 1536,
+    primaryProvider: { name: "openai", dimensions: 1536 },
+    embed: vi.fn(),
+    embedWithMeta: mockEmbedWithMeta,
   })),
 }));
 
@@ -31,8 +35,8 @@ import { searchKnowledge, formatMatchesAsContext, type KnowledgeMatch } from "..
 
 // ---- Helpers ----
 
-function makeEmbeddingResponse(vec: number[] = Array(1536).fill(0.1)) {
-  return { data: [{ embedding: vec }] };
+function makeEmbedResult(vec: number[] = Array(1536).fill(0.1)) {
+  return { embedding: vec, provider: { name: "openai", dimensions: 1536 } };
 }
 
 function makeMatch(overrides: Partial<KnowledgeMatch> = {}): KnowledgeMatch {
@@ -54,7 +58,7 @@ describe("002-rag-knowledge: searchKnowledge", () => {
   });
 
   test("retorna matches con similarity cuando knowledge tiene datos", async () => {
-    mockEmbeddingsCreate.mockResolvedValue(makeEmbeddingResponse());
+    mockEmbedWithMeta.mockResolvedValue(makeEmbedResult());
     const matches = [makeMatch(), makeMatch({ id: "uuid-2", similarity: 0.85 })];
     mockSupabaseRpc.mockResolvedValue({ data: matches, error: null });
 
@@ -66,32 +70,26 @@ describe("002-rag-knowledge: searchKnowledge", () => {
       query_embedding: expect.any(Array),
       match_count: 4,
       filter_source: null,
+      provider: "openai",
     });
   });
 
-  test("retorna [] sin lanzar cuando OpenAI falla", async () => {
-    mockEmbeddingsCreate.mockRejectedValue(new Error("openai rate limit"));
+  test("retorna [] sin lanzar cuando todos los providers fallan", async () => {
+    mockEmbedWithMeta.mockResolvedValue(null);
 
     await expect(searchKnowledge("precio")).resolves.toEqual([]);
     expect(mockSupabaseRpc).not.toHaveBeenCalled();
   });
 
   test("retorna [] sin lanzar cuando Supabase RPC falla", async () => {
-    mockEmbeddingsCreate.mockResolvedValue(makeEmbeddingResponse());
+    mockEmbedWithMeta.mockResolvedValue(makeEmbedResult());
     mockSupabaseRpc.mockResolvedValue({ data: null, error: { message: "rpc error" } });
 
     await expect(searchKnowledge("precio")).resolves.toEqual([]);
   });
 
-  test("retorna [] sin lanzar cuando OpenAI retorna embedding vacío", async () => {
-    mockEmbeddingsCreate.mockResolvedValue({ data: [] });
-
-    await expect(searchKnowledge("precio")).resolves.toEqual([]);
-    expect(mockSupabaseRpc).not.toHaveBeenCalled();
-  });
-
   test("filtro por source pasa filter_source al RPC", async () => {
-    mockEmbeddingsCreate.mockResolvedValue(makeEmbeddingResponse());
+    mockEmbedWithMeta.mockResolvedValue(makeEmbedResult());
     mockSupabaseRpc.mockResolvedValue({ data: [makeMatch({ source: "webinars" })], error: null });
 
     const result = await searchKnowledge("fecha del W2", { source: "webinars" });
@@ -103,7 +101,7 @@ describe("002-rag-knowledge: searchKnowledge", () => {
   });
 
   test("matchCount se pasa al RPC", async () => {
-    mockEmbeddingsCreate.mockResolvedValue(makeEmbeddingResponse());
+    mockEmbedWithMeta.mockResolvedValue(makeEmbedResult());
     mockSupabaseRpc.mockResolvedValue({ data: [makeMatch()], error: null });
 
     await searchKnowledge("precio", { matchCount: 2 });
@@ -114,7 +112,7 @@ describe("002-rag-knowledge: searchKnowledge", () => {
   });
 
   test("knowledge vacío → retorna []", async () => {
-    mockEmbeddingsCreate.mockResolvedValue(makeEmbeddingResponse());
+    mockEmbedWithMeta.mockResolvedValue(makeEmbedResult());
     mockSupabaseRpc.mockResolvedValue({ data: [], error: null });
 
     const result = await searchKnowledge("precio");
@@ -153,14 +151,12 @@ describe("002-rag-knowledge: formatMatchesAsContext", () => {
 
 describe("002-rag-knowledge: ingest logic (unit)", () => {
   test("chunkText salta chunks vacíos — source = nombre de archivo sin extensión", () => {
-    // Verifica la lógica de naming que ingest.ts usa: path.basename(file, ".md")
     const file = "bootcamp.md";
     const source = file.replace(/\.md$/, "");
     expect(source).toBe("bootcamp");
   });
 
   test("chunkText con CHUNK_SIZE y CHUNK_OVERLAP produce chunks correctos", () => {
-    // Replica la función interna de ingest.ts
     function chunkText(text: string, size: number, overlap: number): string[] {
       const chunks: string[] = [];
       let i = 0;
@@ -175,7 +171,6 @@ describe("002-rag-knowledge: ingest logic (unit)", () => {
     const chunks = chunkText(text, 500, 50);
     expect(chunks.length).toBeGreaterThan(1);
     expect(chunks[0]).toHaveLength(500);
-    // overlap: chunk[1] empieza en 450 → primer char igual al último slice del chunk[0]
     expect(chunks[1].slice(0, 50)).toBe(chunks[0].slice(450));
   });
 
